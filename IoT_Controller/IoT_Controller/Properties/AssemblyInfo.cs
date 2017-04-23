@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("RxSerialPort")]
+[assembly: AssemblyTitle("IoT_Controller")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("RxSerialPort")]
+[assembly: AssemblyProduct("IoT_Controller")]
 [assembly: AssemblyCopyright("Copyright ©  2017")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("36331f11-466f-4b3c-bd18-32b936c1fd41")]
+[assembly: Guid("49eb942c-6b4f-442e-9e94-d24942aa0cac")]
 
 // Version information for an assembly consists of the following four values:
 //
