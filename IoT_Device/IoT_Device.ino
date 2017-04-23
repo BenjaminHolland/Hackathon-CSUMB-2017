@@ -10,6 +10,7 @@
 
 #define QUERY_LIGHT 0
 
+//Packet slot structure.
 typedef struct{
   union{
     struct{
@@ -23,44 +24,114 @@ typedef struct{
   bool is_busy;
 } packet_slot;
 
+/**
+ * There are only two packet slots: input and output.
+ * Each slot should be initialized before use using the io_tx/rx_init functions, and freed using io_tx/rx free functions after use.
+ * Neither of these functions allocate memory or do anything more intensive than decoding base64 strings.
+ * 
+ * Each slot contains the data for a packet that has either just come in off the input bus (input_packet) or is being prepared for transmission (output_packet).
+ */
 packet_slot input_packet,output_packet;
 
+/**
+ * packet_begin(packet_slot&,byte)
+ * Initializes a packet slot with a given payload size.
+ */
 bool packet_begin(packet_slot& slot,byte payload_size);
+
+/**
+ * packet_begin(packet_slot&,const char*,byte)
+ * Initializes a packet slot by decoding the given encoded packet.
+ */
 bool packet_begin(packet_slot& slot,const char* encoded_packet,byte encoded_length);
+/**
+ * Mark the slot as ready for reuse.
+ */
 bool packet_end(packet_slot& slot);
 
+/**
+ * Compute the checksum for the payload.
+ */
 byte packet_payload_xsum(packet_slot& slot);
 
+/**
+ * io_tx_init(byte)
+ * Initialize the output packet slot with the given payload size.
+ */
 #define io_tx_init(payload_size) packet_begin(output_packet,(payload_size))
+/**
+ * io_tx_free(void)
+ * Free the output packet slot for reuse.
+ */
 #define io_tx_free() packet_end(output_packet)
+
+/**
+ * Prepare the packet for transmission and transmit it across the seiral port.
+ */
 bool io_tx_packet();
+
+/**
+ * Send a string packet across the serial port.
+ */
 bool io_tx_string(char* message,byte count);
+/**
+ * Send a 16 bit value across the serial port.
+ */
 bool io_tx_int(int value);
 
+/**
+ * Initialize the input packet by decoding an encoded packet.
+ */
 #define io_rx_init(encoded_packet,encoded_length) packet_begin(input_packet,(encoded_packet),(encoded_length))
+/**
+ * Prepare the input packet for reuse.
+ */
 #define io_rx_free() packet_end(input_packet)
+/**
+ * Read and handle the next encoded packet from the input buffer.
+ */
 bool io_rx_packet();
+/**
+ * Take action depending on the given packet.
+ */
 bool io_handle_packet(String packet);
+/**
+ * Handle all waiting packets.
+ */
 void io_dispatch();
+/**
+ * Collect new packets from the serial port.
+ */
 bool io_collect();
+/**
+ * Indicates whether there are packets to be processed. Read Only.
+ */
 bool io_input_waiting;
+/**
+ * The current input buffer. Read only.
+ */
 String io_input_buffer;
 
+/**
+ * Testing functions.
+ */
 void test_io_tx_string();
 void test_io_tx_int();
 
 
 void setup() {
+  //Initialize the serial port.
   Serial.begin(115200);
-  // put your setup code here, to run once:
 }
 
 void loop() {
+  //Handle input.
   io_dispatch();  
   // put your main code here, to run repeatedly:
 }
 
 void serialEvent(){
+  //Collect input.
   io_collect();
 }
 
