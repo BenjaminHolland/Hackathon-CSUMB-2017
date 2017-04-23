@@ -141,9 +141,9 @@ bool packet_begin(packet_slot& slot,byte payload_size){
   if(slot.is_busy) return false;
   if(payload_size>PACKET_MAX_PAYLOAD) return false;
   slot.is_busy=true;
-  slot.packet.data.payload_size=payload_size;
-  slot.packet.data.payload_type=-1;
-  slot.packet.data.payload_xsum=-1;
+  slot.packet.as_structure.payload.size=payload_size;
+  slot.packet.as_structure.payload.type==-1;
+  slot.packet.as_structure.xsum=-1;
   return true;  
 }
 
@@ -151,7 +151,7 @@ bool packet_begin(packet_slot& slot,char* encoded_packet,byte encoded_length){
   if(slot.is_busy) return false;
   if(encoded_length>PACKET_MAX_ENCODED_SIZE) return false;
   Base64.decode((char*)slot.packet.as_bytes,encoded_packet,encoded_length);
-  return packet_payload_xsum(slot)==slot.packet.data.payload_xsum;
+  return packet_payload_xsum(slot)==slot.packet.as_structure.xsum;
 }
 
 bool packet_end(packet_slot& slot){
