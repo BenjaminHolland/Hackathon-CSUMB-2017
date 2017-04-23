@@ -14,11 +14,13 @@
 typedef struct{
   union{
     struct{
-      byte payload_type;
-      byte payload_size;
-      byte payload_xsum;
-      byte payload[PACKET_MAX_PAYLOAD];
-    } data;
+      struct{
+      byte type;
+      byte size;
+      byte data[PACKET_MAX_PAYLOAD];
+      } payload;
+      byte xsum;
+    } as_structure;
     byte as_bytes[PACKET_MAX_SIZE];
   } packet;
   bool is_busy;
