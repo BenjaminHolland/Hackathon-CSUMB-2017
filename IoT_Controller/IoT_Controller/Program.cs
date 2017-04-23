@@ -9,6 +9,7 @@ using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using Nito.AsyncEx;
 using RJCP.IO.Ports;
+using System.Reactive.Subjects;
 namespace IoT_Controller
 {
     public static class SerialPortStreamExt
@@ -17,6 +18,7 @@ namespace IoT_Controller
         public static async Task SendLightQueryPacketAsync(this SerialPortStream stream)
         {
             byte[] buffer = new byte[3];
+
             buffer[0] = 255;
             buffer[1] = 0;
             buffer[2] = 0;
@@ -28,13 +30,14 @@ namespace IoT_Controller
             
             buffer = Encoding.ASCII.GetBytes(encoded_packet);
             
-            await stream.WriteAsync(buffer, 0, buffer.Length);
+            await stream.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
             //Console.WriteLine(encoded_packet);
         }
 
         /// <summary>
         /// Observe this serial ports data as a stream of byte arrays.
         /// </summary>
+        /// 
         /// <param name="stream"></param>
         /// <returns></returns>
         public static IObservable<byte[]> ObserveBytes(this SerialPortStream stream)
@@ -67,6 +70,7 @@ namespace IoT_Controller
                 return null;
             }
         }
+
         static async Task MainAsync(string[] args)
         {
             using (SerialPortStream stream = new SerialPortStream("COM5")) {
@@ -90,14 +94,30 @@ namespace IoT_Controller
                     .Where(packet => packet != null);
 
                 //Set handler for integer packets
-                var intSub = packetSource
+                var lightStream = packetSource
                     .Where(packet => packet[1] == 1)
+                    .Select(packet => BitConverter.ToInt16(packet, 3))
+                    .Multicast(new Subject<short>());
+
+                lightStream.Connect();
+
+                var lowLightSub = lightStream
+                    .Where(value => value < 50)
                     .ObserveOn(NewThreadScheduler.Default)
                     .Subscribe(packet => {
-                        Console.WriteLine(BitConverter.ToInt16(packet, 3));
-                        //continue call/response pattern.
-                        stream.SendLightQueryPacketAsync().ToObservable().Wait();
-                        });
+                        Console.WriteLine("Low Light");
+                    });
+
+                var hiLightSub = lightStream
+                    .Where(value => value > 800)
+                    .ObserveOn(NewThreadScheduler.Default)
+                    .Subscribe(packet => {
+                        Console.WriteLine("High Light");
+                    });
+
+                var kickoffSub = lightStream.Subscribe(value => {
+                    stream.SendLightQueryPacketAsync().ToObservable().Wait(); ;
+                });
 
                 //set handler for string packets.
                 var stringSub = packetSource
@@ -105,21 +125,18 @@ namespace IoT_Controller
                     .ObserveOn(NewThreadScheduler.Default)
                     .Subscribe(packet => Console.WriteLine(Encoding.ASCII.GetString(packet, 3, packet[1])));
                 
+
                 //Kick off the call/response pattern
                 await stream.SendLightQueryPacketAsync();
                 using (byteSource.Connect()) {
                     await byteSource;
                 }
-                
-
             }
         }
 
-
         static void Main(string[] args)
         {
-            AsyncContext.Run(() => MainAsync(args));
-           
+            AsyncContext.Run(() => MainAsync(args));   
         }
     }
 }
