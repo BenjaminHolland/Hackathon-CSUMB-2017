@@ -16,10 +16,9 @@ namespace IoT_Controller
         //Sends a query to the device to report it's current light reading.
         public static async Task SendLightQueryPacketAsync(this SerialPortStream stream)
         {
-            byte[] buffer = new byte[3];
+            byte[] buffer = new byte[2];
             buffer[0] = 0;
             buffer[1] = 0;
-            buffer[2] = unchecked((byte)-1);
             string encoded_packet = Convert.ToBase64String(buffer);
             encoded_packet += '\n';
             buffer = Encoding.ASCII.GetBytes(encoded_packet);
