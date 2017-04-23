@@ -1,8 +1,9 @@
 #include <Base64.h>
 #define PIN_LIGHT A0
 #define PACKET_MAX_SIZE 70
-#define PACKET_HEADER_SIZE 3
-#define PACKET_MAX_PAYLOAD (PACKET_MAX_SIZE-(PACKET_HEADER_SIZE))
+#define PACKET_HEADER_SIZE 2
+#define PACKET_XSUM_SIZE 1
+#define PACKET_MAX_PAYLOAD (PACKET_MAX_SIZE-(PACKET_HEADER_SIZE)-PACKET_XSUM_SIZE)
 #define PACKET_MAX_ENCODED_SIZE 100
 
 #define RESPONSE_STRING 0
@@ -14,12 +15,12 @@
 typedef struct{
   union{
     struct{
+      byte xsum;
       struct{
       byte type;
       byte size;
       byte data[PACKET_MAX_PAYLOAD];
       } payload;
-      byte xsum;
     } as_structure;
     byte as_bytes[PACKET_MAX_SIZE];
   } packet;
@@ -129,7 +130,7 @@ void setup() {
 void loop() {
   //Handle input.
   io_dispatch();  
-  // put your main code here, to run repeatedly:
+  //test_io_tx_string();
 }
 
 void serialEvent(){
@@ -143,7 +144,7 @@ bool packet_begin(packet_slot& slot,byte payload_size){
   slot.is_busy=true;
   slot.packet.as_structure.payload.size=payload_size;
   slot.packet.as_structure.payload.type==-1;
-  slot.packet.as_structure.xsum=-1;
+  slot.packet.as_structure.xsum=255;
   return true;  
 }
 
@@ -162,13 +163,16 @@ bool packet_end(packet_slot& slot){
 }
 
 byte packet_payload_xsum(packet_slot& slot){
-  return -1;
+  return 255;
 }
 
 bool io_tx_packet(){
   if(!output_packet.is_busy) return false;
-  output_packet.packet.as_structure.xsum=packet_payload_xsum(output_packet);
-  byte packet_size=PACKET_HEADER_SIZE+output_packet.packet.as_structure.payload.size;
+  output_packet
+    .packet
+    .as_structure
+    .xsum=packet_payload_xsum(output_packet);
+  byte packet_size=PACKET_HEADER_SIZE+output_packet.packet.as_structure.payload.size+PACKET_XSUM_SIZE;
   byte encoded_packet_size=Base64.encodedLength(packet_size)+1;
   char encoded_packet[encoded_packet_size];
   Base64.encode(encoded_packet,(char*)output_packet.packet.as_bytes,(int)packet_size);
@@ -208,7 +212,9 @@ void test_io_tx_int(){
 
 bool io_handle_packet(String encoded_packet){
   if(input_packet.is_busy) return false;
+ 
   if(!io_rx_init((char*)encoded_packet.c_str(),encoded_packet.length())) return false;
+  
   switch(input_packet.packet.as_structure.payload.type){
     case QUERY_LIGHT:
       io_tx_int(analogRead(PIN_LIGHT));
@@ -227,7 +233,7 @@ bool io_rx_packet(){
     if(io_input_buffer[idx]=='\n'){
       
       String encoded_packet=io_input_buffer.substring(0,idx);
-     
+      
       io_handle_packet(encoded_packet);
       if(idx<io_input_buffer.length()-1){
         io_input_buffer=io_input_buffer.substring(idx+1);
@@ -251,6 +257,7 @@ bool io_collect(){
   char c;
   while(Serial.available()){
     c=Serial.read();
+   
     if(c=='\n'){
       if(io_input_buffer.length()>0){
         io_input_buffer+=c;

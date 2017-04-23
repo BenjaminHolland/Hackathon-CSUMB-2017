@@ -17,15 +17,19 @@ namespace IoT_Controller
         public static async Task SendLightQueryPacketAsync(this SerialPortStream stream)
         {
             byte[] buffer = new byte[3];
-            buffer[0] = 0;
+            buffer[0] = 255;
             buffer[1] = 0;
-            buffer[2] = unchecked((byte)-1);
-            string encoded_packet = Convert.ToBase64String(buffer);
-            encoded_packet += '\n';
-            buffer = Encoding.ASCII.GetBytes(encoded_packet);
-            //Console.WriteLine(encoded_packet);
-            await stream.WriteAsync(buffer, 0, buffer.Length);
+            buffer[2] = 0;
+
+            char[] outA = new char[10];
+            string encoded_packet=Convert.ToBase64String(buffer);
             
+            encoded_packet += '\n';
+            
+            buffer = Encoding.ASCII.GetBytes(encoded_packet);
+            
+            await stream.WriteAsync(buffer, 0, buffer.Length);
+            //Console.WriteLine(encoded_packet);
         }
 
         /// <summary>
@@ -87,19 +91,19 @@ namespace IoT_Controller
 
                 //Set handler for integer packets
                 var intSub = packetSource
-                    .Where(packet => packet[0] == 1)
+                    .Where(packet => packet[1] == 1)
                     .ObserveOn(NewThreadScheduler.Default)
                     .Subscribe(packet => {
-                        Console.WriteLine(BitConverter.ToInt16(packet, 2));
+                        Console.WriteLine(BitConverter.ToInt16(packet, 3));
                         //continue call/response pattern.
                         stream.SendLightQueryPacketAsync().ToObservable().Wait();
                         });
 
                 //set handler for string packets.
                 var stringSub = packetSource
-                    .Where(packet => packet[0] == 0)
+                    .Where(packet => packet[1] == 0)
                     .ObserveOn(NewThreadScheduler.Default)
-                    .Subscribe(packet => Console.WriteLine(Encoding.ASCII.GetString(packet, 2, packet[1])));
+                    .Subscribe(packet => Console.WriteLine(Encoding.ASCII.GetString(packet, 3, packet[1])));
                 
                 //Kick off the call/response pattern
                 await stream.SendLightQueryPacketAsync();
