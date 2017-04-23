@@ -157,7 +157,7 @@ bool packet_begin(packet_slot& slot,char* encoded_packet,byte encoded_length){
 bool packet_end(packet_slot& slot){
   if(!slot.is_busy) return false;
   slot.is_busy=false;
-  slot.packet.data.payload_size=-1;
+  slot.packet.as_structure.payload.size=-1;
   return true;
 }
 
