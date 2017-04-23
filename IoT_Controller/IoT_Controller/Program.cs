@@ -13,6 +13,7 @@ namespace IoT_Controller
 {
     public static class SerialPortStreamExt
     {
+        //Sends a query to the device to report it's current light reading.
         public static async Task SendLightQueryPacketAsync(this SerialPortStream stream)
         {
             byte[] buffer = new byte[3];
@@ -26,6 +27,12 @@ namespace IoT_Controller
             await stream.WriteAsync(buffer, 0, buffer.Length);
             
         }
+
+        /// <summary>
+        /// Observe this serial ports data as a stream of byte arrays.
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <returns></returns>
         public static IObservable<byte[]> ObserveBytes(this SerialPortStream stream)
         {
             byte[] buffer = new byte[4096];
@@ -42,6 +49,11 @@ namespace IoT_Controller
     }
     class Program
     {
+        /// <summary>
+        /// Takes a packet and decodes it.
+        /// </summary>
+        /// <param name="bytes"></param>
+        /// <returns></returns>
         static byte[] DecodePacket(IList<byte> bytes)
         {
             try {
@@ -57,36 +69,42 @@ namespace IoT_Controller
                 stream.BaudRate = 115200;
                 stream.Open();
 
+                //Convert the stream of chuncks to a nice, smooth byte stream.
                 var byteSource = stream.ObserveBytes()
                     .SelectMany(bytes => bytes)
-
                     .ObserveOn(NewThreadScheduler.Default)
                     .Publish();
 
+                //filter out everthing but the separator characters.
                 var newlineSource = byteSource
                     .Where(value => value == '\n');
 
+                //split stream into buffers on the separator character
                 var packetSource = byteSource
                     .Buffer(newlineSource)
                     .Select(bytes => DecodePacket(bytes))
                     .Where(packet => packet != null);
 
+                //Set handler for integer packets
                 var intSub = packetSource
                     .Where(packet => packet[0] == 1)
                     .ObserveOn(NewThreadScheduler.Default)
                     .Subscribe(packet => {
                         Console.WriteLine(BitConverter.ToInt16(packet, 3));
+                        //continue call/response pattern.
                         stream.SendLightQueryPacketAsync().ToObservable().Wait();
                         });
 
+                //set handler for string packets.
                 var stringSub = packetSource
                     .Where(packet => packet[0] == 0)
                     .ObserveOn(NewThreadScheduler.Default)
                     .Subscribe(packet => Console.WriteLine(Encoding.ASCII.GetString(packet, 3, packet[1])));
                 
+                //Kick off the call/response pattern
                 await stream.SendLightQueryPacketAsync();
                 using (byteSource.Connect()) {
-                    await Observable.Never<object>();
+                    await byteSource;
                 }
                 
 
