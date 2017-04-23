@@ -90,7 +90,7 @@ namespace IoT_Controller
                     .Where(packet => packet[0] == 1)
                     .ObserveOn(NewThreadScheduler.Default)
                     .Subscribe(packet => {
-                        Console.WriteLine(BitConverter.ToInt16(packet, 3));
+                        Console.WriteLine(BitConverter.ToInt16(packet, 2));
                         //continue call/response pattern.
                         stream.SendLightQueryPacketAsync().ToObservable().Wait();
                         });
@@ -99,7 +99,7 @@ namespace IoT_Controller
                 var stringSub = packetSource
                     .Where(packet => packet[0] == 0)
                     .ObserveOn(NewThreadScheduler.Default)
-                    .Subscribe(packet => Console.WriteLine(Encoding.ASCII.GetString(packet, 3, packet[1])));
+                    .Subscribe(packet => Console.WriteLine(Encoding.ASCII.GetString(packet, 2, packet[1])));
                 
                 //Kick off the call/response pattern
                 await stream.SendLightQueryPacketAsync();
