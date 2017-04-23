@@ -167,8 +167,8 @@ byte packet_payload_xsum(packet_slot& slot){
 
 bool io_tx_packet(){
   if(!output_packet.is_busy) return false;
-  output_packet.packet.data.payload_xsum=packet_payload_xsum(output_packet);
-  byte packet_size=PACKET_HEADER_SIZE+output_packet.packet.data.payload_size;
+  output_packet.packet.as_structure.xsum=packet_payload_xsum(output_packet);
+  byte packet_size=PACKET_HEADER_SIZE+output_packet.packet.as_structure.payload.size;
   byte encoded_packet_size=Base64.encodedLength(packet_size)+1;
   char encoded_packet[encoded_packet_size];
   Base64.encode(encoded_packet,(char*)output_packet.packet.as_bytes,(int)packet_size);
@@ -179,9 +179,9 @@ bool io_tx_packet(){
 
 bool io_tx_string(char* message,byte count){  
   if(!io_tx_init(count))return false;
-  output_packet.packet.data.payload_type=RESPONSE_STRING;
+  output_packet.packet.as_structure.payload.type=RESPONSE_STRING;
   for(int idx=0;idx<count;idx++){
-    output_packet.packet.data.payload[idx]=message[idx];
+    output_packet.packet.as_structure.payload.data[idx]=message[idx];
   }
   if(!io_tx_packet()) return false;
   if(!io_tx_free()) return false;
@@ -189,10 +189,10 @@ bool io_tx_string(char* message,byte count){
 
 bool io_tx_int(int value){
   if(!io_tx_init(2)) return false;
-  output_packet.packet.data.payload_type=RESPONSE_INT;
+  output_packet.packet.as_structure.payload.type=RESPONSE_INT;
   byte* as_bytes=(byte*)(&value);
   for(int idx=0;idx<sizeof(int);idx++){
-    output_packet.packet.data.payload[idx]=as_bytes[idx];
+    output_packet.packet.as_structure.payload.data[idx]=as_bytes[idx];
   }
   if(!io_tx_packet()) return false;
   if(!io_tx_free()) return false;
@@ -209,7 +209,7 @@ void test_io_tx_int(){
 bool io_handle_packet(String encoded_packet){
   if(input_packet.is_busy) return false;
   if(!io_rx_init((char*)encoded_packet.c_str(),encoded_packet.length())) return false;
-  switch(input_packet.packet.data.payload_type){
+  switch(input_packet.packet.as_structure.payload.type){
     case QUERY_LIGHT:
       io_tx_int(analogRead(PIN_LIGHT));
       break;
